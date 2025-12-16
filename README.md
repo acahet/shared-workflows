@@ -164,7 +164,7 @@ This repository follows [Semantic Versioning](https://semver.org/):
 -   **Major (v1.0.0)**: Breaking changes to workflow inputs/outputs
 -   **Minor (v1.1.0)**: New features, backward compatible
 -   **Patch (v1.0.1)**: Bug fixes, backward compatible
-    Contributing
+## Contributing
 
 We welcome contributions! Please read [CONTRIBUTING.md](CONTRIBUTING.md) for:
 
