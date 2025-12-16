@@ -2,64 +2,23 @@ name: Shared Workflow Versioning
 
 on:
   push:
-    branches:
-      - main
+    branches: [main]
     paths:
-      # Trigger if any workflow file is changed
-      - '.github/workflows/*.yml' 
-      
-jobs:
-  release-version:
-    runs-on: ubuntu-latest
-    
-    steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0 
-          
-      - name: Calculate and Create Next Tag
-        uses: mathieudutour/github-tag-action@v6.2
-        id: create_tag
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          # ❌ REMOVE: default_release_branch: main 
-          
-          # ✅ ADD: Use the correct parameter 'release_branches'
-          release_branches: 'main' 
-          
-          custom_release_rules: |
-            fix: patch
-            chore: patch
-            test: patch
-            style: patch
-            refactor: patch
-            perf: patch
-            docs: patch
-            feat: minor
-            BREAKING CHANGE: major
+      - '.github/workflows/*.yml'
 
-      - name: Create GitHub Release
-        # This step creates a formal GitHub Release entry linked to the new tag
-        if: steps.create_tag.outputs.new_tag != ''
-        uses: actions/github-script@v7
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
         with:
-          script: |
-            const newTag = "${{ steps.create_tag.outputs.new_tag }}";
-            const currentTag = "${{ steps.create_tag.outputs.current_tag }}";
-            const changelog = "${{ steps.create_tag.outputs.changelog }}";
-            
-            if (newTag) {
-              github.rest.repos.createRelease({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                tag_name: newTag,
-                name: `Release ${newTag}`,
-                body: changelog.length > 0 ? changelog : `Automated release from commit.`,
-                draft: false,
-                prerelease: false
-              });
-              console.log(`Successfully created GitHub Release for tag: ${newTag}`);
-            } else {
-              console.log("No new tag generated. Skipping release creation.");
-            }
+          fetch-depth: 0
+
+      - name: Semantic Release (PR title based)
+        uses: cycjimmy/semantic-release-action@v4
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
