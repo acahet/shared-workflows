@@ -1,0 +1,43 @@
+name: Update Changelog on Tag
+
+on:
+  push:
+    tags:
+      # Trigger this workflow only when a new version tag is pushed
+      - 'v[0-9]+.[0-9]+.[0-9]+'
+      - 'v[0-9]+.[0-9]+.[0-9]+-**' # Handles pre-releases like v1.0.0-beta.1
+
+jobs:
+  update_changelog:
+    # Ensure you have write permissions for the workflow to commit the file
+    permissions:
+      contents: write
+      
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          # Fetch all history to accurately calculate the changelog since the last tag
+          fetch-depth: 0
+
+      - name: Generate and Update CHANGELOG.md
+        id: changelog
+        uses: requarks/changelog-action@v1
+        with:
+          # Use the tag that triggered the workflow (e.g., v1.2.3)
+          tag: ${{ github.ref_name }}
+          # This setting tells the action to automatically write the generated changes 
+          # to your CHANGELOG.md file.
+          writeToFile: true
+          token: ${{ github.token }}
+          # Optional: Exclude certain commit types that should not be in the public changelog
+          excludeTypes: 'chore,build,ci,docs,style,refactor,test'
+
+      - name: Commit updated CHANGELOG
+        uses: stefanzweifel/git-auto-commit-action@v5
+        # Only commit if the changelog action actually wrote new content
+        if: steps.changelog.outputs.changes != ''
+        with:
+          commit_message: 'chore(changelog): update for release ${{ github.ref_name }}'
+          file_pattern: 'CHANGELOG.md'
