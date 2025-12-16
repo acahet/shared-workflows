@@ -1,29 +1,104 @@
-name: Playwright Tests
+name: Playwright Tests (Reusable)
+
 on:
-  push:
-    branches: [ main, master ]
-  pull_request:
-    branches: [ main, master ]
-    paths:
-      - 'tests/**'
+  workflow_call:
+    inputs:
+      # Booleans to control which tests run
+      run-api-tests:
+        description: 'Set to true to run Playwright API tests'
+        required: true
+        type: boolean
+      run-ui-tests:
+        description: 'Set to true to run Playwright UI tests'
+        required: true
+        type: boolean
+      # Optional input to override the Node.js version
+      node-version:
+        description: 'Node.js version to use (e.g., lts/*)'
+        required: false
+        type: string
+        default: 'lts/*'
+        
+    secrets:
+      # Define all necessary secrets here. The caller must provide these.
+      EMAIL_API:
+        required: true
+      PASSWORD_API:
+        required: true
+      API_URL:
+        required: true
+
 jobs:
   test:
+    # Skip the job entirely if neither test type is requested
+    if: ${{ inputs.run-api-tests || inputs.run-ui-tests }}
     timeout-minutes: 60
     runs-on: ubuntu-latest
+    
+    # Pass secrets into the Job environment
+    env:
+      EMAIL_API: ${{ secrets.EMAIL_API }}
+      PASSWORD_API: ${{ secrets.PASSWORD_API }}
+      API_URL: ${{ secrets.API_URL }}
+
     steps:
-    - uses: actions/checkout@v4
-    - uses: actions/setup-node@v4
-      with:
-        node-version: lts/*
-    - name: Install dependencies
-      run: npm install -g yarn && yarn
-    - name: Install Playwright Browsers
-      run: yarn playwright install --with-deps
-    - name: Run Playwright tests
-      run: yarn playwright test
-    - uses: actions/upload-artifact@v4
-      if: ${{ failure() }}
-      with:
-        name: playwright-report
-        path: tests/report/playwright-report/
-        retention-days: 3
+      - uses: actions/checkout@v4
+
+      # --- Dependency Caching and Setup ---
+      - name: Cache Node.js dependencies
+        uses: actions/cache@v3
+        id: cache-node
+        with:
+          path: |
+            ~/.npm
+            **/node_modules
+          key: ${{ runner.os }}-node-${{ hashFiles('**/yarn.lock', '**/package-lock.json') }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ inputs.node-version }}
+
+      - name: Install dependencies
+        if: steps.cache-node.outputs.cache-hit != 'true'
+        run: |
+          npm install -g yarn
+          yarn
+
+      - name: Get Playwright version
+        id: playwright-version
+        # This jq command depends on package.json, make sure it is available
+        run: echo "PLAYWRIGHT_VERSION=$(jq -r '.devDependencies[\"@playwright/test\"]' package.json)" >> $GITHUB_ENV
+
+      # --- Playwright Cache and Install ---
+      - name: Cache Playwright browsers
+        uses: actions/cache@v3
+        id: cache-playwright
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ env.PLAYWRIGHT_VERSION }}
+
+      - name: Install Playwright Chromium browser
+        if: steps.cache-playwright.outputs.cache-hit != 'true' && inputs.run-ui-tests
+        run: npx playwright install chromium --with-deps
+
+      # --- Conditional Test Runs ---
+      - name: Run Playwright API tests
+        # ONLY runs if the API input is set to true
+        if: ${{ inputs.run-api-tests }}
+        run: npx playwright test --project=api-tests
+
+      - name: Run Playwright UI tests
+        # ONLY runs if the UI input is set to true
+        if: ${{ inputs.run-ui-tests }}
+        # Note: You can optionally remove the ${{ success() }} if you want UI tests to run 
+        # even if API tests (if run) failed. Keeping it for now.
+        run: npx playwright test --project=ui-tests
+
+      # --- Report Upload ---
+      - uses: actions/upload-artifact@v4
+        if: ${{ always() }} # Always run the upload, regardless of success or failure
+        with:
+          name: playwright-report
+          path: tests/report/playwright-report/
+          retention-days: 7
