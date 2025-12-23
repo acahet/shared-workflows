@@ -62,8 +62,14 @@ jobs:
       - name: Install dependencies
         if: steps.cache-node.outputs.cache-hit != 'true'
         run: |
-          npm install -g yarn
-          yarn
+          if [ -f yarn.lock ]; then
+            npm install -g yarn
+            yarn
+          elif [ -f package-lock.json ] || [ -f npm-shrinkwrap.json ]; then
+            npm ci
+          else
+            npm install
+          fi
 
       - name: Get Playwright version
         id: playwright-version
