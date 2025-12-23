@@ -21,11 +21,11 @@ on:
       npm_token:
         required: false
       EMAIL_API:
-        required: true
+        required: false
       PASSWORD_API:
-        required: true
+        required: false
       API_URL:
-        required: true
+        required: false
 
 jobs:
   playwright-tests:
