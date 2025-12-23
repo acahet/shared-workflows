@@ -20,10 +20,22 @@ on:
     secrets:
       npm_token:
         required: false
+      EMAIL_API:
+        required: true
+      PASSWORD_API:
+        required: true
+      API_URL:
+        required: true
 
 jobs:
   playwright-tests:
     runs-on: ubuntu-latest
+    
+    env:
+      EMAIL_API: ${{ secrets.EMAIL_API }}
+      PASSWORD_API: ${{ secrets.PASSWORD_API }}
+      API_URL: ${{ secrets.API_URL }}
+    
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
