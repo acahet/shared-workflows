@@ -57,7 +57,7 @@ jobs:
           NODE_AUTH_TOKEN: ${{ secrets.npm_token }}
       
       - name: Install Playwright browsers
-        run: npx playwright install --with-deps
+        run: npx playwright install --with-deps chromium
       
       - name: Run Playwright tests
         run: |
