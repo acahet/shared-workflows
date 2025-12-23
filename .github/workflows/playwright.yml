@@ -68,7 +68,7 @@ jobs:
       - name: Get Playwright version
         id: playwright-version
         # This jq command depends on package.json, make sure it is available
-        run: echo "PLAYWRIGHT_VERSION=$(jq -r '.devDependencies[\"@playwright/test\"]' package.json)" >> $GITHUB_ENV
+        run: echo "version=$(jq -r '.devDependencies[\"@playwright/test\"]' package.json)" >> $GITHUB_OUTPUT
 
       # --- Playwright Cache and Install ---
       - name: Cache Playwright browsers
@@ -76,7 +76,7 @@ jobs:
         id: cache-playwright
         with:
           path: ~/.cache/ms-playwright
-          key: ${{ runner.os }}-playwright-${{ env.PLAYWRIGHT_VERSION }}
+          key: ${{ runner.os }}-playwright-${{ steps.playwright-version.outputs.version }}
 
       - name: Install Playwright Chromium browser
         if: steps.cache-playwright.outputs.cache-hit != 'true' && inputs.run-ui-tests
