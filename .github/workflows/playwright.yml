@@ -80,11 +80,6 @@ jobs:
         if: ${{ inputs.run-ui-tests }}
         run: npx playwright install --with-deps
 
-      # --- Optional Debug ---
-      - name: Debug Playwright browsers
-        if: ${{ inputs.run-ui-tests }}
-        run: npx playwright show-browsers
-
       # --- Conditional Test Runs ---
       - name: Run Playwright API tests
         if: ${{ inputs.run-api-tests }}
