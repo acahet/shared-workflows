@@ -30,22 +30,22 @@ on:
 jobs:
   playwright-tests:
     runs-on: ubuntu-latest
-    
+
     env:
       EMAIL_API: ${{ secrets.EMAIL_API }}
       PASSWORD_API: ${{ secrets.PASSWORD_API }}
       API_URL: ${{ secrets.API_URL }}
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: ${{ inputs.node_version }}
           cache: 'npm'
-      
+
       - name: Install dependencies
         run: |
           if [ -f package-lock.json ] || [ -f npm-shrinkwrap.json ]; then
@@ -55,10 +55,19 @@ jobs:
           fi
         env:
           NODE_AUTH_TOKEN: ${{ secrets.npm_token }}
-      
+
       - name: Install Playwright browsers
         run: npx playwright install --with-deps chromium
-      
+
+      # --- Smart reporter history restore ---
+      - name: Restore smart reporter history
+        uses: actions/cache/restore@v4
+        with:
+          path: tests/report/smart-reporter-history/test-history.json
+          key: smart-reporter-history-${{ github.repository }}-${{ github.ref_name }}
+          restore-keys: |
+            smart-reporter-history-${{ github.repository }}-
+
       - name: Run Playwright tests
         run: |
           if [ -n "${{ inputs.test_grep }}" ]; then
@@ -68,11 +77,19 @@ jobs:
           fi
         env:
           ENV: ${{ inputs.run_env }}
-      
+
+      # --- Smart reporter history save ---
+      - name: Save smart reporter history
+        if: ${{ always() && hashFiles('tests/report/smart-reporter-history/test-history.json') != '' }}
+        uses: actions/cache/save@v4
+        with:
+          path: tests/report/smart-reporter-history/test-history.json
+          key: smart-reporter-history-${{ github.repository }}-${{ github.ref_name }}-${{ github.run_id }}
+
       - name: Upload test results
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: playwright-report
-          path: playwright-report/
-          retention-days: 7
+          path: tests/report/playwright-report/
+          retention-days: 30
